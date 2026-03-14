@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SmartShopper — Design Decisions</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #F5F3EE;
+    --ink: #111110;
+    --ink-muted: #6B6A66;
+    --ink-faint: #C4C2BB;
+    --accent: #2B5BFF;
+    --surface: #ECEAE4;
+    --border: rgba(17,17,16,0.10);
+    --mono: 'DM Mono', monospace;
+    --serif: 'DM Serif Display', serif;
+    --sans: 'Sora', sans-serif;
+    --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+    --ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+    --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    background: var(--ink);
+    color: #fff;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* SECTION WRAPPER */
+  .decisions-section {
+    background: var(--ink);
+    padding: 80px clamp(24px, 5vw, 80px);
+    max-width: 1120px;
+    margin: 0 auto;
+  }
+
+  /* SECTION LABEL */
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    margin-bottom: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::before {
+    content: '';
+    width: 20px;
+    height: 2px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  /* HEADER */
+  .dec-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .dec-header h2 {
+    font-family: var(--serif);
+    font-size: clamp(36px, 4.5vw, 60px);
+    line-height: 1.06;
+    letter-spacing: -0.02em;
+    color: #fff;
+    margin-bottom: 0;
+  }
+  .dec-header h2 em { color: #7B9FFF; font-style: italic; }
+  .dec-intro {
+    color: rgba(255,255,255,0.4);
+    font-size: 15px;
+    line-height: 1.7;
+    max-width: 480px;
+    margin-top: 16px;
+  }
+
+  /* COUNTER PILL */
+  .dec-counter {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 100px;
+    padding: 6px 14px 6px 8px;
+    margin-top: 28px;
+  }
+  .dec-counter-dots { display: flex; gap: 4px; }
+  .dec-counter-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    transition: all 0.3s;
+  }
+  .dec-counter-dot.lit {
+    background: var(--accent);
+    box-shadow: 0 0 0 3px rgba(43,91,255,0.3);
+  }
+  .dec-counter span { font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 0.08em; }
+  .dec-counter-num { font-family: var(--mono); font-size: 11px; color: #fff; letter-spacing: 0.06em; }
+
+  /* LAYOUT */
+  .dec-layout {
+    display: grid;
+    grid-template-columns: 188px 1fr;
+    gap: 40px;
+    margin-top: 52px;
+    align-items: start;
+  }
+
+  /* SIDEBAR */
+  .dec-sidebar {
+    position: sticky;
+    top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .dec-sidebar-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .dec-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background var(--ease) 0.2s;
+    border: none;
+    background: none;
+    text-align: left;
+    width: 100%;
+    font: inherit;
+    color: inherit;
+  }
+  .dec-nav-item:hover { background: rgba(255,255,255,0.06); }
+  .dec-nav-item:active { transform: scale(0.98); }
+  .dec-nav-item:focus-visible { outline: 2px solid rgba(123,159,255,0.6); outline-offset: 2px; }
+  .dec-nav-item.active { background: rgba(255,255,255,0.10); }
+  .dec-nav-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    flex-shrink: 0;
+    transition: all 0.25s;
+  }
+  .dec-nav-item.active .dec-nav-dot {
+    background: #7B9FFF;
+    width: 8px; height: 8px;
+    box-shadow: 0 0 0 3px rgba(123,159,255,0.25);
+  }
+  .dec-nav-item span {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.02em;
+    transition: color 0.2s;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dec-nav-item.active span { color: rgba(255,255,255,0.85); }
+
+  /* CARDS STACK */
+  .dec-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: min(82vh, 880px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+  .dec-cards::-webkit-scrollbar { width: 4px; }
+  .dec-cards::-webkit-scrollbar-track { background: transparent; }
+  .dec-cards::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+  /* CARD */
+  .dec-card {
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.04);
+    transition: background var(--ease) 0.2s, border-color var(--ease) 0.2s, box-shadow var(--ease) 0.25s;
+  }
+  .dec-card:first-child { border-radius: 16px 16px 4px 4px; }
+  .dec-card:last-child  { border-radius: 4px 4px 16px 16px; }
+  .dec-card:hover { background: rgba(255,255,255,0.07); }
+  .dec-card.open {
+    background: rgba(255,255,255,0.09);
+    border-color: rgba(123,159,255,0.4);
+    box-shadow: 0 0 0 1px rgba(123,159,255,0.15), 0 12px 40px rgba(0,0,0,0.3);
+  }
+
+  /* CARD HEADER BUTTON */
+  .dec-head-btn {
+    display: grid;
+    grid-template-columns: 56px 1fr auto 36px;
+    align-items: center;
+    gap: 0;
+    min-height: 68px;
+    user-select: none;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    padding: 0;
+    transition: transform var(--ease) 0.15s;
+  }
+  .dec-head-btn:hover { background: rgba(255,255,255,0.03); }
+  .dec-head-btn:active { transform: scale(0.97); transition-timing-function: var(--ease-bounce); }
+  .dec-head-btn:focus-visible { outline: 2px solid rgba(123,159,255,0.5); outline-offset: -2px; }
+
+  /* ICON COLUMN */
+  .dec-icon-wrap {
+    width: 56px; height: 68px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.06);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .dec-icon-wrap svg { width: 22px; height: 22px; fill: rgba(255,255,255,0.3); transition: fill 0.2s; }
+  .dec-card.open .dec-icon-wrap { background: rgba(123,159,255,0.18); }
+  .dec-card.open .dec-icon-wrap svg { fill: #7B9FFF; }
+
+  /* TITLE */
+  .dec-head-text { padding: 0 20px; }
+  .dec-head-num {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.25);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .dec-card.open .dec-head-num { color: #7B9FFF; }
+  .dec-head-title { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.75); line-height: 1.3; }
+  .dec-card.open .dec-head-title { color: #fff; }
+
+  /* CATEGORY CHIP */
+  .dec-head-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    flex-shrink: 0;
+    margin-right: 4px;
+    border: 1px solid transparent;
+  }
+  .tag-ethics { background: rgba(194,37,92,0.15);  color: #FF84B0; border-color: rgba(194,37,92,0.25); }
+  .tag-ux     { background: rgba(59,91,219,0.18);  color: #93AEFF; border-color: rgba(59,91,219,0.3); }
+  .tag-hw     { background: rgba(196,90,0,0.15);   color: #FFAC60; border-color: rgba(196,90,0,0.25); }
+  .tag-proto  { background: rgba(103,65,217,0.15); color: #C4ABFF; border-color: rgba(103,65,217,0.25); }
+  .tag-incl   { background: rgba(29,185,84,0.12);  color: #57E5A0; border-color: rgba(29,185,84,0.2); }
+  .tag-biz    { background: rgba(30,122,60,0.15);  color: #6EDA9C; border-color: rgba(30,122,60,0.25); }
+
+  /* CHEVRON */
+  .dec-chevron {
+    width: 16px; height: 16px;
+    flex-shrink: 0;
+    margin: 0 10px;
+    color: rgba(255,255,255,0.2);
+    transition: transform 0.3s var(--ease), color 0.2s var(--ease);
+  }
+  .dec-card.open .dec-chevron { transform: rotate(180deg); color: #7B9FFF; }
+
+  /* EXPANDABLE BODY */
+  .dec-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.35s var(--ease), opacity 0.25s var(--ease);
+  }
+  .dec-card.open .dec-body { max-height: 260px; opacity: 1; }
+
+  .dec-col { padding: 18px 20px 24px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .dec-col + .dec-col { border-left: 1px solid rgba(255,255,255,0.06); }
+  .dec-col:first-child { padding-left: 56px; }
+
+  .dec-col-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.22);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 9px;
+  }
+  .dec-col-label svg { width: 11px; height: 11px; fill: rgba(255,255,255,0.22); flex-shrink: 0; }
+  .dec-col:nth-child(1) .dec-col-label       { color: rgba(255,184,0,0.7); }
+  .dec-col:nth-child(1) .dec-col-label svg   { fill: rgba(255,184,0,0.7); }
+  .dec-col:nth-child(2) .dec-col-label       { color: rgba(123,159,255,0.7); }
+  .dec-col:nth-child(2) .dec-col-label svg   { fill: rgba(123,159,255,0.7); }
+  .dec-col:nth-child(3) .dec-col-label       { color: rgba(46,213,115,0.75); }
+  .dec-col:nth-child(3) .dec-col-label svg   { fill: rgba(46,213,115,0.75); }
+
+  .dec-col p { font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.65; }
+  .dec-col p strong { color: rgba(255,255,255,0.85); font-weight: 600; }
+
+  /* SCROLL REVEAL */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.55s var(--ease-emphasized-decelerate), transform 0.55s var(--ease-emphasized-decelerate);
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* REDUCED MOTION */
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+    .reveal.visible { opacity: 1; transform: none; }
+    .dec-body { transition: none; }
+    .dec-head-btn:active { transform: none !important; }
+    .dec-cards { scroll-behavior: auto; }
+  }
+
+  /* MOBILE */
+  @media (max-width: 768px) {
+    .dec-layout { grid-template-columns: 1fr; }
+    .dec-sidebar { display: none; }
+    .dec-body { grid-template-columns: 1fr; }
+    .dec-card.open .dec-body { max-height: 800px; }
+    .dec-col:first-child { padding-left: 16px; }
+    .dec-col + .dec-col { border-left: none; border-top: 1px solid rgba(255,255,255,0.06); }
+    .dec-cards { max-height: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="decisions-section">
+
+  <div class="dec-header reveal">
+    <div class="section-label">04 — Design Decisions</div>
+    <h2>Every constraint<br>was a <em>choice.</em></h2>
+    <p class="dec-intro">The decisions that shaped the product — tradeoffs, reasoning, outcomes. Click any row to expand.</p>
+
+    <div class="dec-counter" id="decCounter">
+      <div class="dec-counter-dots" id="decDots"></div>
+      <span class="dec-counter-num" id="decNum">1</span>
+      <span>/ 6</span>
+    </div>
+  </div>
+
+  <div class="dec-layout reveal">
+
+    <!-- Sticky sidebar -->
+    <div class="dec-sidebar">
+      <div class="dec-sidebar-label">Decisions</div>
+      <button class="dec-nav-item active" data-idx="0"><div class="dec-nav-dot"></div><span>Language & naming</span></button>
+      <button class="dec-nav-item" data-idx="1"><div class="dec-nav-dot"></div><span>Alert escalation</span></button>
+      <button class="dec-nav-item" data-idx="2"><div class="dec-nav-dot"></div><span>Hardware choice</span></button>
+      <button class="dec-nav-item" data-idx="3"><div class="dec-nav-dot"></div><span>Wizard of Oz icons</span></button>
+      <button class="dec-nav-item" data-idx="4"><div class="dec-nav-dot"></div><span>Checkout flow</span></button>
+      <button class="dec-nav-item" data-idx="5"><div class="dec-nav-dot"></div><span>Retailer reframe</span></button>
+    </div>
+
+    <!-- Cards -->
+    <div class="dec-cards">
+
+      <!-- 01 -->
+      <div class="dec-card open" data-idx="0">
+        <button class="dec-head-btn" type="button" aria-expanded="true" aria-controls="dec-body-0" id="dec-head-0">
+          <div class="dec-icon-wrap">
+            <svg viewBox="0 0 24 24"><path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16z"/></svg>
+          </div>
+          <div class="dec-head-text">
+            <span class="dec-head-num">01 · Language & Ethics</span>
+            <div class="dec-head-title">Rename "Health Mode" → "Snack Mode"</div>
+          </div>
+          <span class="dec-head-tag tag-ethics">Ethics</span>
+          <svg class="dec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dec-body" id="dec-body-0" role="region" aria-labelledby="dec-head-0">
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>The Decision</div>
+            <p>Calling it "Health Mode" implied moral judgment — categorizing items as healthy or unhealthy is <strong>subjective and culturally biased.</strong></p>
+          </div>
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>The Reasoning</div>
+            <p>The feature needed to feel supportive, not preachy. A name that moralizes gets rejected — users associate it with diet culture.</p>
+          </div>
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>The Outcome</div>
+            <p>Snack Mode shifts focus from <strong>judgment → intention.</strong> It doesn't tell you what's healthy — it holds you to the limit you set.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 02 -->
+      <div class="dec-card" data-idx="1">
+        <button class="dec-head-btn" type="button" aria-expanded="false" aria-controls="dec-body-1" id="dec-head-1">
+          <div class="dec-icon-wrap">
+            <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+          </div>
+          <div class="dec-head-text">
+            <span class="dec-head-num">02 · Behavioral Design</span>
+            <div class="dec-head-title">Snack Mode escalates — skip once, then forced choice</div>
+          </div>
+          <span class="dec-head-tag tag-ux">UX Pattern</span>
+          <svg class="dec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dec-body" id="dec-body-1" role="region" aria-labelledby="dec-head-1">
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>The Decision</div>
+            <p>One alert is too easy to dismiss. <strong>Fully blocking</strong> the user is paternalistic. We needed teeth — not a wall.</p>
+          </div>
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>The Reasoning</div>
+            <p>Two-strike flow: first alert skips while limit stays active. Second trigger forces a binary — turn off Snack Mode, or commit.</p>
+          </div>
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>The Outcome</div>
+            <p>The interaction is <strong>intentional and hard to ignore</strong> — without being controlling. Mirrors best-in-class habit apps.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 03 -->
+      <div class="dec-card" data-idx="2">
+        <button class="dec-head-btn" type="button" aria-expanded="false" aria-controls="dec-body-2" id="dec-head-2">
+          <div class="dec-icon-wrap">
+            <svg viewBox="0 0 24 24"><path d="M15 9H9v6h6V9zm-2 4h-2v-2h2v2zm8-2V9h-2V7c0-1.1-.9-2-2-2h-2V3h-2v2h-2V3H9v2H7c-1.1 0-2 .9-2 2v2H3v2h2v2H3v2h2v2c0 1.1.9 2 2 2h2v2h2v-2h2v2h2v-2h2c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2zm-4 6H7V7h10v10z"/></svg>
+          </div>
+          <div class="dec-head-text">
+            <span class="dec-head-num">03 · Hardware</span>
+            <div class="dec-head-title">Micro:bit as constraint — not limitation</div>
+          </div>
+          <span class="dec-head-tag tag-hw">Hardware</span>
+          <svg class="dec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dec-body" id="dec-body-2" role="region" aria-labelledby="dec-head-2">
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>The Decision</div>
+            <p>A simpler device forced us to only build what mattered. <strong>Every button press had to justify its existence.</strong></p>
+          </div>
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>The Reasoning</div>
+            <p>Constraints were a UX tool, not a liability. Three buttons, three modes. No room for scope creep.</p>
+          </div>
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>The Outcome</div>
+            <p>One mental model. The hardware limit became the product's clarity — <strong>a proof-of-concept without expensive infrastructure.</strong></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 04 -->
+      <div class="dec-card" data-idx="3">
+        <button class="dec-head-btn" type="button" aria-expanded="false" aria-controls="dec-body-3" id="dec-head-3">
+          <div class="dec-icon-wrap">
+            <svg viewBox="0 0 24 24"><path d="M19.8 18.4L14 10.67V6h1c.55 0 1-.45 1-1s-.45-1-1-1H9c-.55 0-1 .45-1 1s.45 1 1 1h1v4.67L4.2 18.4c-.49.66-.02 1.6.8 1.6h14c.82 0 1.29-.94.8-1.6z"/></svg>
+          </div>
+          <div class="dec-head-text">
+            <span class="dec-head-num">04 · Prototyping</span>
+            <div class="dec-head-title">Paper icon swap — Wizard of Oz mode indicators</div>
+          </div>
+          <span class="dec-head-tag tag-proto">Prototype</span>
+          <svg class="dec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dec-body" id="dec-body-3" role="region" aria-labelledby="dec-head-3">
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>The Decision</div>
+            <p>Rolling Micro:bit text was too slow to confirm active modes. We needed to test the concept <strong>before investing in hardware.</strong></p>
+          </div>
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>The Reasoning</div>
+            <p>Hand-cut paper icons — green = active, black = inactive — swapped by a team member during live testing sessions.</p>
+          </div>
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>The Outcome</div>
+            <p>Users <strong>immediately understood cart state</strong> from the icons. Validated the indicator pattern for production — zero display code written.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 05 -->
+      <div class="dec-card" data-idx="4">
+        <button class="dec-head-btn" type="button" aria-expanded="false" aria-controls="dec-body-4" id="dec-head-4">
+          <div class="dec-icon-wrap">
+            <svg viewBox="0 0 24 24"><path d="M9.5 6.5v3h-3v-3h3M11 5H5v6h6V5zm-1.5 9.5v3h-3v-3h3M11 13H5v6h6v-6zm6.5-6.5v3h-3v-3h3M19 5h-6v6h6V5zm-6 8h1.5v1.5H13V13zm1.5 1.5H16V16h-1.5v-1.5zM16 13h1.5v1.5H16V13zm-3 3h1.5v1.5H13V16zm1.5 1.5H16V19h-1.5v-1.5zM16 16h1.5v1.5H16V16zm1.5-1.5H19V16h-1.5v-1.5zm0 3H19V19h-1.5v-1.5zM22 7h-2V4h-3V2h5v5zm0 15v-5h-2v3h-3v2h5zM2 22h5v-2H4v-3H2v5zM2 2v5h2V4h3V2H2z"/></svg>
+          </div>
+          <div class="dec-head-text">
+            <span class="dec-head-num">05 · Accessibility</span>
+            <div class="dec-head-title">Cart barcode checkout — no account required</div>
+          </div>
+          <span class="dec-head-tag tag-incl">Inclusive</span>
+          <svg class="dec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dec-body" id="dec-body-4" role="region" aria-labelledby="dec-head-4">
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>The Decision</div>
+            <p>Requiring a member ID at checkout <strong>excluded non-subscribers</strong> and added friction at the most critical moment.</p>
+          </div>
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>The Reasoning</div>
+            <p>Any barrier at checkout kills adoption. The system must work for anyone who grabs a cart — subscriber or not.</p>
+          </div>
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>The Outcome</div>
+            <p><strong>Inclusive by default.</strong> Non-subscribers sync later via time-sensitive receipt code. Guest mode — zero account creation.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 06 -->
+      <div class="dec-card" data-idx="5">
+        <button class="dec-head-btn" type="button" aria-expanded="false" aria-controls="dec-body-5" id="dec-head-5">
+          <div class="dec-icon-wrap">
+            <svg viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6h-6z"/></svg>
+          </div>
+          <div class="dec-head-text">
+            <span class="dec-head-num">06 · Business Strategy</span>
+            <div class="dec-head-title">Reframe value prop — loyalty over basket size</div>
+          </div>
+          <span class="dec-head-tag tag-biz">Business</span>
+          <svg class="dec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dec-body" id="dec-body-5" role="region" aria-labelledby="dec-head-5">
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>The Decision</div>
+            <p>A feature that helps shoppers spend less <strong>directly contradicts</strong> what most retailers want. No reframe = no business case.</p>
+          </div>
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>The Reasoning</div>
+            <p>Shoppers who feel helped — not sold to — return more often and become higher-LTV customers over time.</p>
+          </div>
+          <div class="dec-col">
+            <div class="dec-col-label"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>The Outcome</div>
+            <p><strong>SmartShopper doesn't reduce spending — it builds trust.</strong> That reframe is what makes this pilotable.</p>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /dec-cards -->
+  </div><!-- /dec-layout -->
+</div><!-- /decisions-section -->
+
+<script>
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ── Scroll reveal ──
+  const reveals = document.querySelectorAll('.reveal');
+  if (!prefersReducedMotion) {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => entry.target.classList.add('visible'), 80);
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.06 });
+    reveals.forEach(el => io.observe(el));
+  } else {
+    reveals.forEach(el => el.classList.add('visible'));
+  }
+
+  // ── Decision accordion ──
+  const cards = document.querySelectorAll('.dec-card');
+  const headBtns = document.querySelectorAll('.dec-head-btn');
+  const navItems = document.querySelectorAll('.dec-nav-item');
+  const decNum = document.getElementById('decNum');
+  const dotsWrap = document.getElementById('decDots');
+  const cardsContainer = document.querySelector('.dec-cards');
+
+  // Build counter dots
+  if (dotsWrap) {
+    for (let i = 0; i < 6; i++) {
+      const d = document.createElement('div');
+      d.className = 'dec-counter-dot' + (i === 0 ? ' lit' : '');
+      dotsWrap.appendChild(d);
+    }
+  }
+
+  function setActive(idx) {
+    cards.forEach((c, i) => c.classList.toggle('open', i === idx));
+    headBtns.forEach((btn, i) => btn.setAttribute('aria-expanded', i === idx ? 'true' : 'false'));
+    navItems.forEach((n, i) => n.classList.toggle('active', i === idx));
+    if (decNum) decNum.textContent = idx + 1;
+    const dots = dotsWrap ? dotsWrap.querySelectorAll('.dec-counter-dot') : [];
+    dots.forEach((d, i) => d.classList.toggle('lit', i === idx));
+  }
+
+  function openOrToggleCard(idx) {
+    const card = cards[idx];
+    const isOpen = card.classList.contains('open');
+    if (isOpen) {
+      card.classList.remove('open');
+      headBtns[idx].setAttribute('aria-expanded', 'false');
+      navItems.forEach(n => n.classList.remove('active'));
+      if (decNum) decNum.textContent = '–';
+      const dots = dotsWrap ? dotsWrap.querySelectorAll('.dec-counter-dot') : [];
+      dots.forEach(d => d.classList.remove('lit'));
+    } else {
+      setActive(idx);
+      if (cardsContainer) {
+        card.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'nearest' });
+      }
+    }
+  }
+
+  headBtns.forEach((btn, idx) => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); openOrToggleCard(idx); });
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openOrToggleCard(idx); }
+    });
+  });
+
+  navItems.forEach((btn, idx) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setActive(idx);
+      if (cardsContainer) {
+        cards[idx].scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'nearest' });
+      }
+    });
+  });
+
+  setActive(0);
+
+  // ── Notify parent frame of content height (for Framer iframe resizing) ──
+  function postHeight() {
+    const height = document.body.scrollHeight;
+    window.parent.postMessage({ type: 'resize', height }, '*');
+  }
+  postHeight();
+  new MutationObserver(postHeight).observe(document.body, { subtree: true, childList: true, attributes: true });
+  window.addEventListener('resize', postHeight);
+</script>
+</body>
+</html>
